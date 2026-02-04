@@ -1,5 +1,5 @@
 import requests
-from typing import Any
+from typing import Any, Dict
 from bs4 import BeautifulSoup
 import json
 
@@ -13,11 +13,7 @@ class Scraper:
 
     def __init__(self):
         """
-        Docstring for __init__
-
-        :param self: Description
-        :param subdir: Description
-        :type subdir: str
+        Initialise la session de scraping et récupère la page d'accueil.
         """
         # Très utile pour éviter de renvoyer toujours les mêmes handshake
         # TCP et d'avoir toujours une connexion constante avec le server
@@ -27,15 +23,11 @@ class Scraper:
 
     def _request(self, subdir: str, use_cache: bool = True) -> requests.Response | requests.HTTPError:
         """
-        Docstring for _request
-
-        :param self: Description
-        :param subdir: Description
-        :type subdir: str
-        :param use_cache: Description
-        :type use_cache: bool
-        :return: Description
-        :rtype: Response | AttributeError
+        Effectue une requête GET sur le serveur Millesima.
+        :param subdir: Le sous-répertoire ou chemin de l'URL (ex: "/vins").
+        :param use_cache: Si True, retourne la réponse précédente si l'URL est identique.
+        :return: requests.Response: L'objet réponse de la requête.
+        :rtype: requests.HTTPError: Si le serveur renvoie un code d'erreur (4xx, 5xx).
         """
 
         target_url: str = f"{self._url}{subdir.lstrip("/")}"
@@ -55,10 +47,10 @@ class Scraper:
 
     def getsoup(self, subdir: str = "/") -> BeautifulSoup:
         """
-        Docstring for getsoup
+        Récupère le contenu HTML d'une page et le transforme en objet BeautifulSoup.
 
-        :param self: Description
-        :return: Description
+        :param subdir: Le chemin de la page. Si None, retourne la soupe actuelle.
+        :return: BeautifulSoup: L'objet parsé pour extraction de données.
         :rtype: BeautifulSoup
         """
         if subdir != None:
@@ -66,7 +58,16 @@ class Scraper:
             self._soup = BeautifulSoup(self._response.text, "html.parser")
         return self._soup
 
-    def get_json_data(self):
+    def get_json_data(self) -> Dict[str, Any]:
+        """
+        Extrait les données JSON contenues dans la balise __NEXT_DATA__ du site.
+        
+        Beaucoup de sites modernes (Next.js) stockent leur état initial dans 
+        une balise <script> pour l'hydratation côté client.
+
+        :return Dict[str, Any]: Un dictionnaire contenant les props de la page, 
+                           ou un dictionnaire vide en cas d'erreur ou d'absence.
+        """
         script = self._soup.find("script", id="__NEXT_DATA__")
         if script and script.string:
             try:
