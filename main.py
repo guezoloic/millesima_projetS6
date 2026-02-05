@@ -11,7 +11,7 @@ class Scraper:
     sur le serveur https de Millesina
     """
 
-    def __init__(self):
+    def __init__(self, subdir: str = None):
         """
         Initialise la session de scraping et récupère la page d'accueil.
         """
@@ -19,11 +19,11 @@ class Scraper:
         # TCP et d'avoir toujours une connexion constante avec le server
         self._session: requests.Session = requests.Session()
         self._url: str = "https://www.millesima.fr/"
-        self._soup = self.getsoup()
+        self._soup = self.getsoup(subdir)
 
     def _request(
             self, subdir: str, use_cache: bool = True
-            ) -> requests.Response | requests.HTTPError:
+    ) -> requests.Response | requests.HTTPError:
         """
         Effectue une requête GET sur le serveur Millesima.
         :param subdir: Le sous-répertoire ou chemin de l'URL (ex: "/vins").
@@ -34,7 +34,8 @@ class Scraper:
         (4xx, 5xx).
         """
 
-        target_url: str = f"{self._url}{subdir.lstrip('/')}"
+        target_url: str = f"{self._url}{subdir.lstrip('/')}" if subdir is \
+            not None else self._url
         # Éviter un max possible de faire des requetes au servers même
         # en ayant un tunnel tcp avec le paramètre `use_cache` que si
         # activer, va comparer l'url avec l'url précédant
@@ -49,7 +50,8 @@ class Scraper:
 
         return self._response
 
-    def getsoup(self, subdir: str = "/") -> BeautifulSoup:
+    def getsoup(self, subdir: str = None
+                ) -> BeautifulSoup | requests.HTTPError:
         """
         Récupère le contenu HTML d'une page et le transforme en objet
         BeautifulSoup.
@@ -59,7 +61,7 @@ class Scraper:
         :return: BeautifulSoup: L'objet parsé pour extraction de données.
         :rtype: BeautifulSoup
         """
-        if subdir is not None:
+        if not hasattr(self, "_soup") or subdir is not None:
             self._request(subdir)
             self._soup = BeautifulSoup(self._response.text, "html.parser")
         return self._soup
@@ -81,7 +83,7 @@ class Scraper:
                 data: dict[str, Any] = json.loads(script.string)
                 for element in ['props', 'pageProps', 'initialReduxState',
                                 'product', 'content']:
-                    data.get(element)
+                    data = data[element]
                 return data
             except json.decoder.JSONDecodeError:
                 pass
