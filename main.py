@@ -86,3 +86,12 @@ class Scraper:
             except json.decoder.JSONDecodeError:
                 pass
         return {}
+    def prix(self) -> str:
+        """
+        Extrait le prix du vin à partir de la page actuelle.
+        :return str: Le prix du vin ou une chaîne vide si non trouvé.
+        """
+        price_element = self._soup.find("span", class_="price")
+        if price_element:
+            return price_element.text.strip()
+        return ""
