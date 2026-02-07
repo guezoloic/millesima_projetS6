@@ -103,5 +103,6 @@ def test_soup(scraper: Scraper):
 def test_getProductName(scraper: Scraper):
     jsondata = scraper.getjsondata("nino-negri-5-stelle-sfursat-2022.html")
     assert jsondata["productName"] == "Nino Negri : 5 Stelle Sfursat 2022"
+    assert isinstance(jsondata["items"], list)
     assert len(jsondata["items"]) > 0
     assert jsondata["items"][0]["offerPrice"] == 390
