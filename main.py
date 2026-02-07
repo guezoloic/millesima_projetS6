@@ -33,8 +33,11 @@ class ScraperData:
                 dict[str, object], current_value.get(name)
             )
             if app_dict:
-                return cast(str, app_dict.get("valueId"))
+                return cast(str, app_dict.get("valueId")).rstrip("+")
         return None
+
+    def parker(self) -> str | None:
+        return self._getvin("note_rp")
 
     def robinson(self) -> str | None:
         return self._getvin("note_jr")
@@ -179,4 +182,7 @@ class Scraper:
                 print(f"Erreur lors de l'extraction JSON : {e}", file=stderr)
         return ScraperData({})
 
-print(Scraper().getjsondata("/chateau-gloria-2016.html").suckling())
+# file = Scraper().getjsondata("/chateau-gloria-2016.html")
+# print("parker:   ", file.parker())
+# print("robinson: ", file.robinson())
+# print("suckling: ", file.suckling())
