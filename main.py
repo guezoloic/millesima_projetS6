@@ -80,7 +80,7 @@ class Scraper:
         if not isinstance(items, list) or len(items) == 0:
             raise ValueError("Aucun prix disponible (items vide).")
 
-        # 1) priorité : bouteille 75cl (nbunit=1 et equivbtl=1)
+        # 1) bouteille 75cl (nbunit=1 et equivbtl=1)
         for item in items:
             if not isinstance(item, dict):
                 continue
@@ -93,7 +93,7 @@ class Scraper:
                 if isinstance(p, (int, float)):
                     return float(p)
 
-        # 2) fallback : calcul depuis caisse
+        # 2) calcul depuis caisse
         for item in items:
             if not isinstance(item, dict):
                 continue
