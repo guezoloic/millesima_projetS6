@@ -6,8 +6,9 @@ from json import loads
 
 
 class _ScraperData:
-    def __init__(self, data: dict[str, object]) -> None:
+    def __init__(self, data: dict[str, object], scraper: Scraper | None = None) -> None:
         self._data: dict[str, object] = data
+        self._scraper: Scraper | None = scraper
 
     def _getcontent(self) -> dict[str, object] | None:
         """_summary_
@@ -50,6 +51,12 @@ class _ScraperData:
             dict[str, object], current_value.get("appellation")
         )
         return cast(str, app_dict["value"])
+
+    def acceder(self, name: str) -> _ScraperData:
+        scraper: Scraper | None = self._scraper
+        if scraper is None:
+            scraper = Scraper()
+        return scraper.getjsondata(name)
 
     def _getvin(self, name: str) -> str | None:
         """_summary_
@@ -221,5 +228,5 @@ class Scraper:
                 continue
             raise ValueError(f"Clé manquante dans le JSON : {key}")
 
-        return _ScraperData(cast(dict[str, object], current_data))
+        return _ScraperData(cast(dict[str, object], current_data), scraper=self)
 
