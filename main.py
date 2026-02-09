@@ -6,9 +6,8 @@ from json import loads
 
 
 class _ScraperData:
-    def __init__(self, data: dict[str, object], scraper: Scraper | None = None) -> None:
+    def __init__(self, data: dict[str, object]) -> None:
         self._data: dict[str, object] = data
-        self._scraper: Scraper | None = scraper
 
     def _getcontent(self) -> dict[str, object] | None:
         """_summary_
@@ -42,23 +41,15 @@ class _ScraperData:
         Returns:
             str: _description_
         """
-        current_value: dict[str, object] | None = self._getattributes()
+        attrs: dict[str, object] | None = self._getattributes()
 
-        if current_value is None:
-            return None
+        if attrs is not None:
+            app_dict: object | None = attrs.get("appellation")
+            if isinstance(app_dict, dict):
+                return cast(str, app_dict.get("value"))
+        return None
 
-        app_dict: dict[str, object] = cast(
-            dict[str, object], current_value.get("appellation")
-        )
-        return cast(str, app_dict["value"])
-
-    def acceder(self, name: str) -> _ScraperData:
-        scraper: Scraper | None = self._scraper
-        if scraper is None:
-            scraper = Scraper()
-        return scraper.getjsondata(name)
-
-    def _getvin(self, name: str) -> str | None:
+    def _getcritiques(self, name: str) -> str | None:
         """_summary_
 
         Args:
@@ -67,29 +58,30 @@ class _ScraperData:
         Returns:
             str | None: _description_
         """
+
         current_value: dict[str, object] | None = self._getattributes()
+        if current_value is not None:
+            app_dict: dict[str, object] = cast(
+                dict[str, object], current_value.get(name)
+            )
+            if not app_dict:
+                return None
 
-        if current_value is None:
-            return None
+            val = cast(str, app_dict.get("value")).rstrip("+").split("-")
+            if len(val) > 1:
+                val[0] = str((int(val[0]) + int(val[1])) / 2)
 
-        app_dict: dict[str, object] = cast(
-            dict[str, object], current_value.get(name)
-        )
-
-        val: list[str] = cast(str, app_dict.get("attributes")).rstrip("+").split("-")
-        # dans le cas où 93-94 -> [93, 94] -> 93.5
-        if len(val) > 1:
-            val[0] = str((int(val[0]) + int(val[1])) / 2)
-        return val[0]
+            return val[0]
+        return None
 
     def parker(self) -> str | None:
-        return self._getvin("note_rp")
+        return self._getcritiques("note_rp")
 
     def robinson(self) -> str | None:
-        return self._getvin("note_jr")
+        return self._getcritiques("note_jr")
 
     def suckling(self) -> str | None:
-        return self._getvin("note_js")
+        return self._getcritiques("note_js")
 
     def getdata(self) -> dict[str, object]:
         return self._data
@@ -228,5 +220,5 @@ class Scraper:
                 continue
             raise ValueError(f"Clé manquante dans le JSON : {key}")
 
-        return _ScraperData(cast(dict[str, object], current_data), scraper=self)
+        return _ScraperData(cast(dict[str, object], current_data))
 
