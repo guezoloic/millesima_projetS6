@@ -6,7 +6,7 @@ from json import loads
 
 
 class _ScraperData:
-    def __init__(self, data: dict[str, object], scraper: Scraper | None = None) -> None:
+    def __init__(self, data: dict[str, object], scraper: 'Scraper | None' = None) -> None:
         self._data: dict[str, object] = data
         self._scraper: Scraper | None = scraper
 
