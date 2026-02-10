@@ -2,7 +2,7 @@ from json import dumps
 from bs4 import Tag
 import pytest
 from requests_mock import Mocker
-from main import Scraper, ScraperData
+from main import Scraper
 
 
 @pytest.fixture(autouse=True)
@@ -10,7 +10,47 @@ def mock_site():
     with Mocker() as m:
         m.get(
             "https://www.millesima.fr/",
-            text="<html><body><h1>MILLESIMA</h1></body></html>",
+            text=f"""
+            <html>
+                <body>
+                    <script id="__NEXT_DATA__" type="application/json">
+                    {dumps({
+                        "props": {
+                            "pageProps": {
+                                "initialReduxState": {
+                                    "product": {
+                                        "content": {
+                                            "items": [],
+                                            "attributes": {}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    })}
+                    </script>
+                </body>
+            </html>
+            """,
+        )
+
+        m.get(
+            "https://www.millesima.fr/poubelle",
+            text=f"""
+            <html>
+                <body>
+                    <h1>POUBELLE</h1>
+                    <script id="__NEXT_DATA__" type="application/json">
+                    {dumps({
+                        "props": {
+                            "pageProps": {
+                            }
+                        }
+                    })}
+                    </script>
+                </body>
+            </html>
+            """,
         )
 
         json_data = {
@@ -41,7 +81,7 @@ def mock_site():
                                                 "name": "En promotion",
                                                 "value": "Non",
                                                 "sequence": 80,
-                                                "displayable": "false",
+                                                "displayable": "False",
                                                 "type": "CHECKBOX",
                                                 "isSpirit": False,
                                             },
@@ -52,6 +92,18 @@ def mock_site():
                                                 "sequence": 65,
                                                 "displayable": "true",
                                                 "type": "CHECKBOX",
+                                                "isSpirit": False,
+                                            },
+                                            "equivbtl": {
+                                                "valueId": "1",
+                                                "name": "equivbtl",
+                                                "value": "1",
+                                                "isSpirit": False,
+                                            },
+                                            "nbunit": {
+                                                "valueId": "6",
+                                                "name": "nbunit",
+                                                "value": "6",
                                                 "isSpirit": False,
                                             },
                                         },
@@ -73,6 +125,24 @@ def mock_site():
                                         "isSpirit": False,
                                         "groupIdentifier": "appellation_433",
                                     },
+                                    "note_rp": {
+                                        "valueId": "91",
+                                        "name": "Parker",
+                                        "value": "91",
+                                        "isSpirit": False,
+                                    },
+                                    "note_jr": {
+                                        "valueId": "17+",
+                                        "name": "J. Robinson",
+                                        "value": "17+",
+                                        "isSpirit": False,
+                                    },
+                                    "note_js": {
+                                        "valueId": "93-94",
+                                        "name": "J. Suckling",
+                                        "value": "93-94",
+                                        "isSpirit": False,
+                                    },
                                 },
                             }
                         }
@@ -83,10 +153,12 @@ def mock_site():
 
         html_product = f"""
         <html>
-            <script id="__NEXT_DATA__" type="application/json">
-                {dumps(json_data)}
-            </script>
-        </body>
+            <body>    
+                <h1>MILLESIMA</h1>
+                <script id="__NEXT_DATA__" type="application/json">
+                    {dumps(json_data)}
+                </script>
+            </body>
         </html>
         """
         m.get(
@@ -104,22 +176,67 @@ def scraper() -> Scraper:
 
 
 def test_soup(scraper: Scraper):
-    h1: Tag | None = scraper.getsoup().find("h1")
-
-    assert isinstance(h1, Tag)
-    assert h1.text == "MILLESIMA"
-
-
-# def test_getProductName(scraper: Scraper):
-#     jsondata = scraper.getjsondata("nino-negri-5-stelle-sfursat-2022.html")
-#     assert jsondata["productName"] == "Nino Negri : 5 Stelle Sfursat 2022"
-#     assert isinstance(jsondata["items"], list)
-#     assert len(jsondata["items"]) > 0
-#     assert jsondata["items"][0]["offerPrice"] == 390
+    vide = scraper.getsoup("")
+    poubelle = scraper.getsoup("poubelle")
+    contenu = scraper.getsoup("nino-negri-5-stelle-sfursat-2022.html")
+    assert vide.find("h1") is None
+    assert str(poubelle.find("h1")) == "<h1>POUBELLE</h1>"
+    assert str(contenu.find("h1")) == "<h1>MILLESIMA</h1>"
 
 
 def test_appellation(scraper: Scraper):
-    appellation: ScraperData = scraper.getjsondata(
-        "nino-negri-5-stelle-sfursat-2022.html"
-    )
-    assert appellation.appellation() == "Sforzato di Valtellina"
+    vide = scraper.getjsondata("")
+    poubelle = scraper.getjsondata("poubelle")
+    contenu = scraper.getjsondata("nino-negri-5-stelle-sfursat-2022.html")
+    assert vide.appellation() is None
+    assert poubelle.appellation() is None
+    assert contenu.appellation() == "Sforzato di Valtellina"
+
+
+def test_fonctionprivee(scraper: Scraper):
+    vide = scraper.getjsondata("")
+    poubelle = scraper.getjsondata("poubelle")
+    contenu = scraper.getjsondata("nino-negri-5-stelle-sfursat-2022.html")
+    assert vide._getattributes() is not None
+    assert vide._getattributes() == {}
+    assert vide._getcontent() is not None
+    assert vide._getcontent() == {"items": [], "attributes": {}}
+    assert poubelle._getattributes() is None
+    assert poubelle._getcontent() is None
+    assert contenu._getcontent() is not None
+    assert contenu._getattributes() is not None
+
+
+
+def test_critiques(scraper: Scraper):
+    vide = scraper.getjsondata("")
+    poubelle = scraper.getjsondata("poubelle")
+    contenu = scraper.getjsondata("nino-negri-5-stelle-sfursat-2022.html")
+    assert vide.parker() is None
+    assert vide.robinson() is None
+    assert vide.suckling() is None
+    assert vide._getcritiques("test_ts") is None
+    assert poubelle.parker() is None
+    assert poubelle.robinson() is None
+    assert poubelle.suckling() is None
+    assert poubelle._getcritiques("test_ts") is None
+    assert contenu.parker() == "91"
+    assert contenu.robinson() == "17"
+    assert contenu.suckling() == "93.5"
+    assert contenu._getcritiques("test_ts") is None
+
+def test_prix(scraper: Scraper):
+    vide = scraper.getjsondata("")
+    poubelle = scraper.getjsondata("poubelle")
+    contenu = scraper.getjsondata("nino-negri-5-stelle-sfursat-2022.html")
+
+    # Cas vide : items == [] -> on ne peut pas calculer -> ValueError
+    with pytest.raises(ValueError):
+        _ = vide.prix()
+
+    # Cas poubelle : JSON incomplet -> _getcontent() None -> ValueError
+    with pytest.raises(ValueError):
+        _ = poubelle.prix()
+
+    assert contenu.prix() == 65.0
+
