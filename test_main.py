@@ -240,3 +240,7 @@ def test_prix(scraper: Scraper):
 
     assert contenu.prix() == 65.0
 
+def test_informations(scraper: Scraper):
+    contenu = scraper.getjsondata("nino-negri-5-stelle-sfursat-2022.html")
+    assert contenu.informations() == "Sforzato di Valtellina,91,17,93.5,65.0"
+

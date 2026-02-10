@@ -171,6 +171,21 @@ class _ScraperData:
     def getdata(self) -> dict[str, object]:
         return self._data
 
+    def informations(self) -> str:
+        """
+        Retourne toutes les informations sous la forme :
+        "Appelation,Parker,J.Robinson,J.Suckling,Prix"
+        """
+
+        appellation = self.appellation()
+        parker = self.parker()
+        robinson = self.robinson()
+        suckling = self.suckling()
+        prix = self.prix()
+
+        return f"{appellation},{parker},{robinson},{suckling},{prix}"
+
+
 
 class Scraper:
     """
