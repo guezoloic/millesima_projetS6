@@ -299,31 +299,34 @@ class Scraper:
         except JSONDecodeError | HTTPError:
             return None
 
-    def getvins(self, subdir: str):
+    def getvins(self, subdir: str, filename: str):
         cache: set[str] = set[str]()
         page = 0
 
-        while True:
-            page += 1
-            products_list = self._geturlproductslist(f"{subdir}?page={page}")
+        with open(filename, 'a') as f:
+            while True:
+                page += 1
+                products_list = self._geturlproductslist(f"{subdir}?page={page}")
 
-            print(f"---- {page} ----")
-            if not products_list:
-                break
+                print(f"---- {page} ----")
+                if not products_list:
+                    break
 
-            for product in products_list:
-                if not isinstance(product, dict):
-                    continue
+                for product in products_list:
+                    if not isinstance(product, dict):
+                        continue
 
-                link = product.get("seoKeyword")
+                    link = product.get("seoKeyword")
 
-                if link and link not in cache:
-                    try:
-                        infos = self.getjsondata(link).informations()
-                        print(infos)
-                        cache.add(link)
-                    except JSONDecodeError | HTTPError as e:
-                        print(f"Erreur sur le produit {link}: {e}")
+                    if link and link not in cache:
+                        try:
+                            infos = self.getjsondata(link).informations()
+                            _ = f.write(infos + "\n")
+                            print(infos)
+                            cache.add(link)
+                        except JSONDecodeError | HTTPError as e:
+                            print(f"Erreur sur le produit {link}: {e}")
+                f.flush()
 
 
-# Scraper().getvins("bordeaux.html")
+Scraper().getvins("bordeaux.html", "donnee.csv")
