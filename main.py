@@ -113,7 +113,7 @@ class _ScraperData:
                 return None
 
             val = cast(str, app_dict.get("value")).rstrip("+").split("-")
-            if len(val) > 1:
+            if len(val) > 1 and val[1] != "":
                 val[0] = str((int(val[0]) + int(val[1])) / 2)
 
             return val[0]
@@ -301,23 +301,23 @@ class Scraper:
 
     def getvins(self, subdir: str):
         cache: set[str] = set[str]()
+        page = 0
 
-        for page in range(1, 64):
+        while True:
+            page += 1
             products_list = self._geturlproductslist(f"{subdir}?page={page}")
 
+            print(f"---- {page} ----")
             if not products_list:
                 break
-        
+
             for product in products_list:
                 if not isinstance(product, dict):
                     continue
 
                 link = product.get("seoKeyword")
 
-                if not link:
-                    continue
-
-                if link not in cache:
+                if link and link not in cache:
                     try:
                         infos = self.getjsondata(link).informations()
                         print(infos)
@@ -326,4 +326,4 @@ class Scraper:
                         print(f"Erreur sur le produit {link}: {e}")
 
 
-print(Scraper().getvins("bordeaux.html"))
+# Scraper().getvins("bordeaux.html")
