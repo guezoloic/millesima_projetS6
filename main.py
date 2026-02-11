@@ -1,8 +1,8 @@
 from typing import cast
-from requests import Response, Session
+from requests import HTTPError, Response, Session
 from bs4 import BeautifulSoup, Tag
 from collections import OrderedDict
-from json import loads
+from json import JSONDecodeError, loads
 
 
 class _ScraperData:
@@ -284,41 +284,46 @@ class Scraper:
 
         return _ScraperData(cast(dict[str, object], current_data))
 
-    # def _geturlsearch(self, subdir: str, index: int) -> str | None:
-    #     data: dict[str, object] = self.getjsondata(subdir).getdata()
+    def _geturlproductslist(self, subdir: str):
+        try:
+            data: dict[str, object] = self.getjsondata(subdir).getdata()
 
-    #     for element in ["initialReduxState", "categ", "content"]:
-    #         data = cast(dict[str, object], data.get(element))
-    #         if data is None or not isinstance(data, dict):
-    #             return None
+            for element in ["initialReduxState", "categ", "content"]:
+                data = cast(dict[str, object], data.get(element))
+                if data is None or not isinstance(data, dict):
+                    return None
 
-    #     products = data.get("products")
-    #     if not isinstance(products, list) or index >= len(products):
-    #         return None
+            products = data.get("products")
+            if isinstance(products, list):
+                return products
+        except JSONDecodeError | HTTPError:
+            return None
 
-    #     product = products[index]
-    #     if isinstance(product, dict):
-    #         return str(product.get("seoKeyword"))
+    def getvins(self, subdir: str):
+        cache: set[str] = set[str]()
 
-    #     return None
+        for page in range(1, 64):
+            products_list = self._geturlproductslist(f"{subdir}?page={page}")
 
-    # def getvins(self, subdir: str) -> None:
-    #     cache: set[str] = set[str]()
+            if not products_list:
+                break
+        
+            for product in products_list:
+                if not isinstance(product, dict):
+                    continue
 
-    #     for page in range(1, 2):
-    #         index_link = 1
-    #         while True:
-    #             link: str | None = self._geturlsearch(
-    #                 subdir=f"{subdir}?page={page}", index=index_link
-    #             )
+                link = product.get("seoKeyword")
 
-    #             index_link+=1
-    #             if link is None:
-    #                 break
-                
-    #             if link not in cache:
-    #                 print(self.getjsondata(link).informations())
-    #                 cache.add(link)
+                if not link:
+                    continue
+
+                if link not in cache:
+                    try:
+                        infos = self.getjsondata(link).informations()
+                        print(infos)
+                        cache.add(link)
+                    except JSONDecodeError | HTTPError as e:
+                        print(f"Erreur sur le produit {link}: {e}")
 
 
-# Scraper().getvins("bordeaux.html")
+print(Scraper().getvins("bordeaux.html"))
