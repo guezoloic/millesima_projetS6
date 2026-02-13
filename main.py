@@ -6,7 +6,14 @@ from json import JSONDecodeError, loads
 
 
 class _ScraperData:
+    """_summary_
+    """
     def __init__(self, data: dict[str, object]) -> None:
+        """_summary_
+
+        Args:
+            data (dict[str, object]): _description_
+        """
         self._data: dict[str, object] = data
 
     def _getcontent(self) -> dict[str, object] | None:
@@ -285,34 +292,49 @@ class Scraper:
         return _ScraperData(cast(dict[str, object], current_data))
 
     def _geturlproductslist(self, subdir: str):
+        """_summary_
+
+        Args:
+            subdir (str): _description_
+
+        Returns:
+            _type_: _description_
+        """
         try:
             data: dict[str, object] = self.getjsondata(subdir).getdata()
 
             for element in ["initialReduxState", "categ", "content"]:
-                data = cast(dict[str, object], data.get(element))
-                if data is None or not isinstance(data, dict):
+                data: dict[str, object] = cast(dict[str, object], data.get(element))
+                if not isinstance(data, dict):
                     return None
 
-            products = data.get("products")
+            products: list[str] = cast(list[str], data.get("products"))
             if isinstance(products, list):
                 return products
-        except JSONDecodeError | HTTPError:
+
+        except (JSONDecodeError, HTTPError):
             return None
 
     def getvins(self, subdir: str, filename: str):
-        cache: set[str] = set[str]()
-        page = 0
+        """_summary_
 
-        with open(filename, 'a') as f:
+        Args:
+            subdir (str): _description_
+            filename (str): _description_
+        """
+        with open(filename, "a") as f:
+            cache: set[str] = set[str]()
+            page = 0
+
             while True:
                 page += 1
                 products_list = self._geturlproductslist(f"{subdir}?page={page}")
 
-                print(f"---- {page} ----")
                 if not products_list:
                     break
 
-                for product in products_list:
+                products_list_length = len(products_list)
+                for i, product in enumerate(products_list):
                     if not isinstance(product, dict):
                         continue
 
@@ -322,11 +344,14 @@ class Scraper:
                         try:
                             infos = self.getjsondata(link).informations()
                             _ = f.write(infos + "\n")
-                            print(infos)
+                            print(
+                                f"page: {page} | {i + 1}/{products_list_length} {link}"
+                            )
                             cache.add(link)
-                        except JSONDecodeError | HTTPError as e:
+                        except (JSONDecodeError, HTTPError) as e:
                             print(f"Erreur sur le produit {link}: {e}")
                 f.flush()
 
 
-Scraper().getvins("bordeaux.html", "donnee.csv")
+if __name__ == "__main__":
+    Scraper().getvins("bordeaux.html", "donnee.csv")

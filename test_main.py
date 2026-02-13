@@ -1,5 +1,5 @@
 from json import dumps
-from bs4 import Tag
+from unittest.mock import patch, mock_open
 import pytest
 from requests_mock import Mocker
 from main import Scraper
@@ -71,10 +71,10 @@ def mock_site():
                                         "_id": "J4131/22/C/CC/6-11652",
                                         "partnumber": "J4131/22/C/CC/6",
                                         "taxRate": "H",
-                                        "listPrice": 390,
-                                        "offerPrice": 390,
-                                        "seoKeyword": "nino-negri-5-stelle-sfursat-2022-c-cc-6.html",
-                                        "shortdesc": "Un carton de 6 Bouteilles (75cl)",
+                                        "listPrice": 842,
+                                        "offerPrice": 842,
+                                        "seoKeyword": "vin-de-charazade1867.html",
+                                        "shortdesc": "Une bouteille du meilleur vin du monde?",
                                         "attributes": {
                                             "promotion_o_n": {
                                                 "valueId": "0",
@@ -101,9 +101,9 @@ def mock_site():
                                                 "isSpirit": False,
                                             },
                                             "nbunit": {
-                                                "valueId": "6",
+                                                "valueId": "1",
                                                 "name": "nbunit",
-                                                "value": "6",
+                                                "value": "1",
                                                 "isSpirit": False,
                                             },
                                         },
@@ -120,14 +120,14 @@ def mock_site():
                                     "appellation": {
                                         "valueId": "433",
                                         "name": "Appellation",
-                                        "value": "Sforzato di Valtellina",
-                                        "url": "sforzato-di-valtellina.html",
+                                        "value": "Madame-Loïk",
+                                        "url": "Madame-loik.html",
                                         "isSpirit": False,
                                         "groupIdentifier": "appellation_433",
                                     },
                                     "note_rp": {
                                         "valueId": "91",
-                                        "name": "Parker",
+                                        "name": "Peter Parker",
                                         "value": "91",
                                         "isSpirit": False,
                                     },
@@ -139,7 +139,7 @@ def mock_site():
                                     },
                                     "note_js": {
                                         "valueId": "93-94",
-                                        "name": "J. Suckling",
+                                        "name": "J. cherazade",
                                         "value": "93-94",
                                         "isSpirit": False,
                                     },
@@ -166,6 +166,79 @@ def mock_site():
             text=html_product,
         )
 
+        html_product = f"""
+        <html>
+            <body>    
+                <h1>MILLESIMA</h1>
+                <script id="__NEXT_DATA__" type="application/json">
+                    {dumps(json_data)}
+                </script>
+            </body>
+        </html>
+        """
+
+        list_pleine = f"""
+            <html>
+                <body>    
+                    <h1>LE WINE</h1>
+                    <script id="__NEXT_DATA__" type="application/json">
+                        {dumps({
+                            "props": {
+                                "pageProps": {
+                                    "initialReduxState": {
+                                        "categ": {
+                                            "content": {
+                                                "products": [
+                                                    {"seoKeyword": "/nino-negri-5-stelle-sfursat-2022.html",},
+                                                    {"seoKeyword": "/poubelle",},
+                                                    {"seoKeyword": "/",}
+                                                ]
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        )}
+                    </script>
+                </body>
+            </html>
+            """
+
+        list_vide = f"""
+            <html>
+                <body>    
+                    <h1>LE WINE</h1>
+                    <script id="__NEXT_DATA__" type="application/json">
+                        {dumps({
+                            "props": {
+                                "pageProps": {
+                                    "initialReduxState": {
+                                        "categ": {
+                                            "content": {
+                                                "products": [
+                                                ]
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        )}
+                    </script>
+                </body>
+            </html>
+            """
+
+        m.get(
+            "https://www.millesima.fr/wine.html",
+            complete_qs=False,
+            response_list=[
+                {"text": list_pleine},
+                {"text": list_vide},
+            ],
+        )
+
         # on return m sans fermer le server qui simule la page
         yield m
 
@@ -190,7 +263,7 @@ def test_appellation(scraper: Scraper):
     contenu = scraper.getjsondata("nino-negri-5-stelle-sfursat-2022.html")
     assert vide.appellation() is None
     assert poubelle.appellation() is None
-    assert contenu.appellation() == "Sforzato di Valtellina"
+    assert contenu.appellation() == "Madame-Loïk"
 
 
 def test_fonctionprivee(scraper: Scraper):
@@ -205,7 +278,6 @@ def test_fonctionprivee(scraper: Scraper):
     assert poubelle._getcontent() is None
     assert contenu._getcontent() is not None
     assert contenu._getattributes() is not None
-
 
 
 def test_critiques(scraper: Scraper):
@@ -232,13 +304,23 @@ def test_prix(scraper: Scraper):
     contenu = scraper.getjsondata("nino-negri-5-stelle-sfursat-2022.html")
     assert vide.prix() is None
     assert poubelle.prix() is None
-    assert contenu.prix() == 65.0
-    
-    
+    assert contenu.prix() == 842.0
+
+
 def test_informations(scraper: Scraper):
     contenu = scraper.getjsondata("nino-negri-5-stelle-sfursat-2022.html")
-    assert contenu.informations() == "Sforzato di Valtellina,91,17,93.5,65.0"
+    assert contenu.informations() == "Madame-Loïk,91,17,93.5,842.0"
     vide = scraper.getjsondata("")
     poubelle = scraper.getjsondata("poubelle")
     assert vide.informations() == "None,None,None,None,None"
     assert poubelle.informations() == "None,None,None,None,None"
+
+
+def test_search(scraper: Scraper):
+    m = mock_open()
+    with patch("builtins.open", m):
+        scraper.getvins("wine.html", "fake_file.csv")
+
+    assert m().write.called
+    all_writes = "".join(call.args[0] for call in m().write.call_args_list)
+    assert "Madame-Loïk,91,17,93.5,842.0" in all_writes
