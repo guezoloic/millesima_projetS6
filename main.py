@@ -121,7 +121,7 @@ class _ScraperData:
 
             val = cast(str, app_dict.get("value")).rstrip("+").split("-")
             if len(val) > 1 and val[1] != "":
-                val[0] = str((int(val[0]) + int(val[1])) / 2)
+                val[0] = str(round((float(val[0]) + float(val[1]))  / 2, 1))
 
             return val[0]
         return None
@@ -325,6 +325,7 @@ class Scraper:
         with open(filename, "a") as f:
             cache: set[str] = set[str]()
             page = 0
+            _ = f.write("Appellation,Robert,Robinson,Suckling,Prix\n")
 
             while True:
                 page += 1
