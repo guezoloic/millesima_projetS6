@@ -1,4 +1,4 @@
-#!/usr/bin/env python3 
+#!/usr/bin/env python3
 
 from sys import argv
 from typing import cast
@@ -357,7 +357,15 @@ class Scraper:
                 f.flush()
 
 
-if __name__ == "__main__":
+def main() -> None:
     if len(argv) != 2:
-        raise ValueError(f"{argv[0]} <subdir>")
-    Scraper().getvins(argv[1], "donnee.csv")
+        raise ValueError(f"{argv[0]} <sous-url>")
+    scraper: Scraper = Scraper()
+    scraper.getvins(argv[1], "donnee.csv")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        print(f"ERREUR: {e}")
