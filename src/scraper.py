@@ -174,6 +174,18 @@ class Scraper:
         # Très utile pour éviter de renvoyer toujours les mêmes handshake
         # TCP et d'avoir toujours une connexion constante avec le server
         self._session: Session = Session()
+        # Crée une "fausse carte d'identité" pour éviter que le site nous
+        # bloque car on serait des robots
+        self._session.headers.update(
+            {
+                "User-Agent": 
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) \
+                     AppleWebKit/537.36 (KHTML, like Gecko) \
+                     Chrome/122.0.0.0 Safari/537.36",
+                "Accept-Language": 
+                    "fr-FR,fr;q=0.9,en;q=0.8",
+            }
+        )
         # Système de cache pour éviter de solliciter le serveur inutilement
         self._latest_request: tuple[(str, Response)] | None = None
         self._latest_soups: OrderedDict[str, BeautifulSoup] = OrderedDict[
@@ -194,7 +206,8 @@ class Scraper:
             HTTPError: Si le serveur renvoie un code d'erreur (4xx, 5xx).
         """
         target_url: str = self._url + subdir.lstrip("/")
-        response: Response = self._session.get(url=target_url, timeout=10)
+        # envoyer une requête GET sur la page si erreur, renvoie un raise
+        response: Response = self._session.get(url=target_url, timeout=30)
         response.raise_for_status()
         return response
 
@@ -294,7 +307,7 @@ class Scraper:
 
         return _ScraperData(cast(dict[str, object], current_data))
 
-    def _geturlproductslist(self, subdir: str):
+    def _geturlproductslist(self, subdir: str) -> list[str] | None:
         """_summary_
 
         Args:
@@ -318,21 +331,22 @@ class Scraper:
         except (JSONDecodeError, HTTPError):
             return None
 
-    def getvins(self, subdir: str, filename: str):
+    def getvins(self, subdir: str, filename: str) -> None:
         """_summary_
 
         Args:
             subdir (str): _description_
             filename (str): _description_
         """
-        with open(filename, "a") as f:
+        with open(filename, "w") as f:
             cache: set[str] = set[str]()
             page = 0
             _ = f.write("Appellation,Robert,Robinson,Suckling,Prix\n")
 
             while True:
                 page += 1
-                products_list = self._geturlproductslist(f"{subdir}?page={page}")
+                products_list: list[str] | None = \
+                    self._geturlproductslist(f"{subdir}?page={page}")
 
                 if not products_list:
                     break
