@@ -1,11 +1,48 @@
 #!/usr/bin/env python3
 
+from io import SEEK_END, SEEK_SET, BufferedWriter, BufferedReader
+from os.path import exists, normpath, realpath, dirname, join
+from os import makedirs
+from pickle import dump, load, UnpicklingError
 from sys import argv
-from typing import cast
+from typing import Any, Callable, Literal, cast
 from requests import HTTPError, Response, Session
 from bs4 import BeautifulSoup, Tag
 from collections import OrderedDict
 from json import JSONDecodeError, loads
+
+_dir: str = dirname(realpath(__name__))
+
+
+def _getcache[T](mode: Literal["rb", "wb"], fn: Callable[[Any], T]) -> T | None:
+    """_summary_
+
+    Returns:
+        _type_: _description_
+    """
+    cache_dirname = normpath(join(_dir, ".cache"))
+    save_path = normpath(join(cache_dirname, "save"))
+
+    if not exists(cache_dirname):
+        makedirs(cache_dirname)
+
+    try:
+        with open(save_path, mode) as f:
+            return fn(f)
+    except (FileNotFoundError, EOFError, UnpicklingError):
+        return None
+
+
+def savestate(data: tuple[int, set[str]]) -> None:
+    def save(f: BufferedWriter) -> None:
+        _ = f.seek(0)
+        _ = f.truncate()
+        dump(data, f)
+        f.flush()
+    _getcache("wb", save)
+
+def loadstate() -> tuple[int, set[str]] | None:
+    return _getcache("rb", lambda f: load(f))
 
 
 class _ScraperData:
@@ -189,7 +226,7 @@ class Scraper:
     def __init__(self) -> None:
         """
         Initialise l'infrastructure de navigation:
-        
+
          - créer une session pour éviter de faire un handshake pour chaque requête
          - ajout d'un header pour éviter le blocage de l'accès au site
          - ajout d'un système de cache
@@ -347,7 +384,7 @@ class Scraper:
         except (JSONDecodeError, HTTPError):
             return None
 
-    def getvins(self, subdir: str, filename: str, reset: bool) -> None:
+    def getvins(self, subdir: str, filename: str, reset: bool = False) -> None:
         """
         Scrape récursivement toutes les pages d'une catégorie et sauvegarde en CSV.
 
@@ -356,45 +393,65 @@ class Scraper:
             filename (str): Nom du fichier de sortie (ex: 'vins.csv').
             reset (bool): (Optionnel) pour réinitialiser le processus.
         """
-        with open(filename, "w") as f:
-            cache: set[str] = set[str]()
-            page = 0
-            _ = f.write("Appellation,Robert,Robinson,Suckling,Prix\n")
+        mode: Literal["w", "a+"] = "w" if reset else "a+"
+        title: str = "Appellation,Robert,Robinson,Suckling,Prix\n"
+        page: int = 1
+        cache: set[str] = set[str]()
 
-            while True:
-                page += 1
-                products_list: list[str] | None = self._geturlproductslist(
-                    f"{subdir}?page={page}"
-                )
+        if not reset:
+            serializable: tuple[int, set[str]] | None = loadstate()
+            if isinstance(serializable, tuple):
+                page, cache = serializable
+        try:
+            with open(filename, mode) as f:
+                # check si le titre est bien présent au début du buffer
+                # sinon il l'ecrit, petit bug potentiel, a+ ecrit tout le
+                # temps a la fin du buffer, si on a ecrit des choses avant
+                # le titre sera apres ces données mais on part du principe
+                # que personne va toucher le fichier.
+                _ = f.seek(0, SEEK_SET)
+                if not (f.read(len(title)) == title):
+                    _ = f.write(title)
+                else:
+                    _ = f.seek(0, SEEK_END)
 
-                if not products_list:
-                    break
+                while True:
+                    products_list: list[str] | None = self._geturlproductslist(
+                        f"{subdir}?page={page}"
+                    )
 
-                products_list_length = len(products_list)
-                for i, product in enumerate(products_list):
-                    if not isinstance(product, dict):
-                        continue
+                    if not products_list:
+                        break
 
-                    link = product.get("seoKeyword")
+                    products_list_length = len(products_list)
+                    for i, product in enumerate(products_list):
+                        if not isinstance(product, dict):
+                            continue
 
-                    if link and link not in cache:
-                        try:
-                            infos = self.getjsondata(link).informations()
-                            _ = f.write(infos + "\n")
-                            print(
-                                f"page: {page} | {i + 1}/{products_list_length} {link}"
-                            )
-                            cache.add(link)
-                        except (JSONDecodeError, HTTPError) as e:
-                            print(f"Erreur sur le produit {link}: {e}")
-                f.flush()
+                        link = product.get("seoKeyword")
+
+                        if link and link not in cache:
+                            try:
+                                infos = self.getjsondata(link).informations()
+                                _ = f.write(infos + "\n")
+                                print(
+                                    f"page: {page} | {i + 1}/{products_list_length} {link}"
+                                )
+                                cache.add(link)
+                            except (JSONDecodeError, HTTPError) as e:
+                                print(f"Erreur sur le produit {link}: {e}")
+                    f.flush()
+                    page += 1
+        except:
+            if not reset:
+                savestate((page, cache))
 
 
 def main() -> None:
-    if len(argv) != 2:
-        raise ValueError(f"{argv[0]} <sous-url>")
+    if len(argv) != 3:
+        raise ValueError(f"{argv[0]} <filename> <sous-url>")
     scraper: Scraper = Scraper()
-    scraper.getvins(argv[1], "donnee.csv", False)
+    scraper.getvins(argv[2], argv[1])
 
 
 if __name__ == "__main__":
