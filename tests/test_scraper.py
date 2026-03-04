@@ -153,7 +153,7 @@ def mock_site():
 
         html_product = f"""
         <html>
-            <body>    
+            <body>
                 <h1>MILLESIMA</h1>
                 <script id="__NEXT_DATA__" type="application/json">
                     {dumps(json_data)}
@@ -168,7 +168,7 @@ def mock_site():
 
         html_product = f"""
         <html>
-            <body>    
+            <body>
                 <h1>MILLESIMA</h1>
                 <script id="__NEXT_DATA__" type="application/json">
                     {dumps(json_data)}
@@ -179,7 +179,7 @@ def mock_site():
 
         list_pleine = f"""
             <html>
-                <body>    
+                <body>
                     <h1>LE WINE</h1>
                     <script id="__NEXT_DATA__" type="application/json">
                         {dumps({
@@ -207,7 +207,7 @@ def mock_site():
 
         list_vide = f"""
             <html>
-                <body>    
+                <body>
                     <h1>LE WINE</h1>
                     <script id="__NEXT_DATA__" type="application/json">
                         {dumps({
@@ -319,7 +319,7 @@ def test_informations(scraper: Scraper):
 def test_search(scraper: Scraper):
     m = mock_open()
     with patch("builtins.open", m):
-        scraper.getvins("wine.html", "fake_file.csv")
+        scraper.getvins("wine.html", "fake_file.csv", True)
 
     assert m().write.called
     all_writes = "".join(call.args[0] for call in m().write.call_args_list)

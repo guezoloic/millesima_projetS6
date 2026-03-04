@@ -1,0 +1,14 @@
+site_name: "Projet Millesima S6"
+
+theme:
+  name: "material"
+
+plugins:
+  - search
+  - mkdocstrings
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed
