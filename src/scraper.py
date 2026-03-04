@@ -16,6 +16,9 @@ _dir: str = dirname(realpath(__name__))
 
 T = TypeVar("T")
 
+filename = argv[1]
+suburl = argv[2]
+
 
 def _getcache(mode: Literal["rb", "wb"], fn: Callable[[Any], T]) -> T | None:
     """_summary_
@@ -24,7 +27,7 @@ def _getcache(mode: Literal["rb", "wb"], fn: Callable[[Any], T]) -> T | None:
         _type_: _description_
     """
     cache_dirname = normpath(join(_dir, ".cache"))
-    save_path = normpath(join(cache_dirname, "save"))
+    save_path = normpath(join(cache_dirname, f"save-{filename.rsplit(".")[0]}"))
 
     if not exists(cache_dirname):
         makedirs(cache_dirname)
@@ -465,7 +468,7 @@ class Scraper:
                         )
                         self._writevins(cache, product, f)
                     page += 1
-        except Exception:
+        except (Exception, HTTPError, KeyboardInterrupt, JSONDecodeError):
             if not reset:
                 savestate((page, cache))
 
@@ -474,7 +477,7 @@ def main() -> None:
     if len(argv) != 3:
         raise ValueError(f"{argv[0]} <filename> <sous-url>")
     scraper: Scraper = Scraper()
-    scraper.getvins(argv[2], argv[1])
+    scraper.getvins(suburl, filename)
 
 
 if __name__ == "__main__":
