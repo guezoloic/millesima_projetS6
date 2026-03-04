@@ -16,6 +16,7 @@ _dir: str = dirname(realpath(__name__))
 
 T = TypeVar("T")
 
+
 def _getcache(mode: Literal["rb", "wb"], fn: Callable[[Any], T]) -> T | None:
     """_summary_
 
@@ -433,6 +434,7 @@ class Scraper:
             # processus en entier.
             serializable: tuple[int, set[str]] | None = loadstate()
             if isinstance(serializable, tuple):
+                # override la page et le cache
                 page, cache = serializable
         try:
             with open(filename, mode) as f:
