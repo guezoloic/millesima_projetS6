@@ -215,6 +215,7 @@ class _ScraperData:
         robinson = self.robinson()
         suckling = self.suckling()
         prix = self.prix()
+        prix = self.prix()
 
         return f"{appellation},{parker},{robinson},{suckling},{prix}"
 
