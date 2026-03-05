@@ -5,13 +5,7 @@ from os.path import normpath, join
 from sys import argv
 from pandas import read_csv, DataFrame
 
-from cleaning import (display_info,
-                      drop_empty_appellation,
-                      mean_robert,
-                      mean_robinson,
-                      mean_suckling,
-                      fill_missing_scores,
-                      encode_appellation)
+from cleaning import *
 
 
 def load_csv(filename: str) -> DataFrame:

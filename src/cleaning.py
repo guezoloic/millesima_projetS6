@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-from pandas import DataFrame, to_numeric
-import pandas as pd
+from pandas import DataFrame, to_numeric, get_dummies
 
 SCORE_COLS = ["Robert", "Robinson", "Suckling"]
 
@@ -37,7 +36,7 @@ def mean_score(df: DataFrame, col: str) -> DataFrame:
     Calcule la moyenne d'une colonne de score par appellation.
         - Convertit les valeurs en numériques, en remplaçant les non-convertibles par NaN
         - Calcule la moyenne par appellation
-        - Remplace les NaN résultants par 0 
+        - Remplace les NaN résultants par 0
 
     """
     tmp = df[["Appellation", col]].copy()
@@ -46,12 +45,10 @@ def mean_score(df: DataFrame, col: str) -> DataFrame:
 
     # moyenne par appellation
     means = tmp.groupby("Appellation", as_index=False)[col].mean()
-    
+
     means[col] = means[col].fillna(0)
-    
+
     means = means.rename(columns={col: f"mean_{col}"})
-    
-    return means
 
 
 def mean_robert(df: DataFrame) -> DataFrame:
@@ -96,10 +93,10 @@ def encode_appellation(df: DataFrame, column: str = "Appellation") -> DataFrame:
     Remplace la colonne 'Appellation' par des colonnes indicatrices
     """
     df_copy = df.copy()
-    
+
     appellations = df_copy[column].astype(str).str.strip()
 
-    appellation_dummies = pd.get_dummies(appellations)
+    appellation_dummies = get_dummies(appellations)
 
     df_copy = df_copy.drop(columns=[column])
 

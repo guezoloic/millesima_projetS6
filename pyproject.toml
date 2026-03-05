@@ -1,7 +1,12 @@
 [project]
 name = "projet-millesima-s6"
 version = "0.1.0"
-dependencies = ["requests==2.32.5", "beautifulsoup4==4.14.3", "pandas==2.3.3", "tqdm==4.67.3"]
+dependencies = [
+    "requests==2.32.5",
+    "beautifulsoup4==4.14.3",
+    "pandas==2.3.3",
+    "tqdm==4.67.3",
+]
 
 [project.optional-dependencies]
 test = ["pytest==8.4.2", "requests-mock==1.12.1", "flake8==7.3.0"]
