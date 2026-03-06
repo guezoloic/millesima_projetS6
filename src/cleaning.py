@@ -1,103 +1,87 @@
 #!/usr/bin/env python3
-from pandas import DataFrame, to_numeric, get_dummies
 
-SCORE_COLS = ["Robert", "Robinson", "Suckling"]
-
-
-def display_info(df: DataFrame, name: str = "DataFrame") -> None:
-    """
-    Affiche un résumé du DataFrame
-        -la taille
-        -types des colonnes
-        -valeurs manquantes
-        -statistiques numériques
-    """
-    print(f"\n===== {name} =====")
-
-    print(f"Shape : {df.shape[0]} lignes × {df.shape[1]} colonnes")
-
-    print("\nTypes des colonnes :")
-    print(df.dtypes)
-
-    print("\nValeurs manquantes :")
-    print(df.isna().sum())
-
-    print("\nStatistiques numériques :")
-    print(df.describe().round(2))
+from typing import cast, override
+from pandas import DataFrame, read_csv, to_numeric, get_dummies
 
 
-def drop_empty_appellation(df: DataFrame) -> DataFrame:
+class Cleaning:
+    def __init__(self, filename) -> None:
+        self._vins: DataFrame = read_csv(filename)
+        #
+        self.SCORE_COLS: list[str] = [
+            c for c in self._vins.columns if c not in ["Appellation", "Prix"]
+        ]
+        #
+        for col in self.SCORE_COLS:
+            self._vins[col] = to_numeric(self._vins[col], errors="coerce")
 
-    return df.dropna(subset=["Appellation"])
+    def getVins(self) -> DataFrame:
+        return self._vins.copy(deep=True)
 
+    @override
+    def __str__(self) -> str:
+        """
+        Affiche un résumé du DataFrame
+            - la taille
+            - types des colonnes
+            - valeurs manquantes
+            - statistiques numériques
+        """
+        return (
+            f"Shape : {self._vins.shape[0]} lignes x {self._vins.shape[1]} colonnes\n\n"
+            f"Types des colonnes :\n{self._vins.dtypes}\n\n"
+            f"Valeurs manquantes :\n{self._vins.isna().sum()}\n\n"
+            f"Statistiques numériques :\n{self._vins.describe().round(2)}\n\n"
+        )
 
-def mean_score(df: DataFrame, col: str) -> DataFrame:
-    """
-    Calcule la moyenne d'une colonne de score par appellation.
-        - Convertit les valeurs en numériques, en remplaçant les non-convertibles par NaN
-        - Calcule la moyenne par appellation
-        - Remplace les NaN résultants par 0
+    def drop_empty_appellation(self) -> Cleaning:
+        self._vins = self._vins.dropna(subset=["Appellation"])
+        return self
 
-    """
-    tmp = df[["Appellation", col]].copy()
+    def _mean_score(self, col: str) -> DataFrame:
+        """
+        Calcule la moyenne d'une colonne de score par appellation.
+            - Convertit les valeurs en numériques, en remplaçant les non-convertibles par NaN
+            - Calcule la moyenne par appellation
+            - Remplace les NaN résultants par 0
 
-    tmp[col] = to_numeric(tmp[col], errors="coerce")
+        """
+        means = self._vins.groupby("Appellation", as_index=False)[col].mean()
+        means = means.rename(
+            columns={col: f"mean_{col}"}
+        )  # pyright: ignore[reportCallIssue]
+        return cast(DataFrame, means.fillna(0))
 
-    # moyenne par appellation
-    means = tmp.groupby("Appellation", as_index=False)[col].mean()
+    def _mean_robert(self) -> DataFrame:
+        return self._mean_score("Robert")
 
-    means[col] = means[col].fillna(0)
+    def _mean_robinson(self) -> DataFrame:
+        return self._mean_score("Robinson")
 
-    means = means.rename(columns={col: f"mean_{col}"})
+    def _mean_suckling(self) -> DataFrame:
+        return self._mean_score("Suckling")
 
+    def fill_missing_scores(self) -> Cleaning:
+        """
+        Remplacer les notes manquantes par la moyenne
+        des vins de la même appellation.
+        """
+        for element in self.SCORE_COLS:
+            means = self._mean_score(element)
+            self._vins = self._vins.merge(means, on="Appellation", how="left")
+            
+            mean_col = f"mean_{element}"
+            self._vins[element] = self._vins[element].fillna(self._vins[mean_col])
 
-def mean_robert(df: DataFrame) -> DataFrame:
-    return mean_score(df, "Robert")
+            self._vins = self._vins.drop(columns=["mean_" + element])
+        return self
 
-
-def mean_robinson(df: DataFrame) -> DataFrame:
-    return mean_score(df, "Robinson")
-
-
-def mean_suckling(df: DataFrame) -> DataFrame:
-    return mean_score(df, "Suckling")
-
-
-def fill_missing_scores(df: DataFrame) -> DataFrame:
-    """
-    Remplacer les notes manquantes par la moyenne
-    des vins de la même appellation.
-    """
-    df_copy = df.copy()
-    df_copy["Appellation"] = df_copy["Appellation"].astype(str).str.strip()
-
-    for score in SCORE_COLS:
-        df_copy[score] = to_numeric(df_copy[score], errors="coerce")
-
-    temp_cols: list[str] = []
-
-    for score in SCORE_COLS:
-        mean_df = mean_score(df_copy, score)
-        mean_name = f"mean_{score}"
-        temp_cols.append(mean_name)
-
-        df_copy = df_copy.merge(mean_df, on="Appellation", how="left")
-        df_copy[score] = df_copy[score].fillna(df_copy[mean_name])
-
-    df_copy = df_copy.drop(columns=temp_cols)
-    return df_copy
-
-
-def encode_appellation(df: DataFrame, column: str = "Appellation") -> DataFrame:
-    """
-    Remplace la colonne 'Appellation' par des colonnes indicatrices
-    """
-    df_copy = df.copy()
-
-    appellations = df_copy[column].astype(str).str.strip()
-
-    appellation_dummies = get_dummies(appellations)
-
-    df_copy = df_copy.drop(columns=[column])
-
-    return df_copy.join(appellation_dummies)
+    def encode_appellation(self, column: str = "Appellation") -> Cleaning:
+        """
+        Remplace la colonne 'Appellation' par des colonnes indicatrices
+        """
+        appellations = self._vins[column].astype(str).str.strip()
+        appellation_dummies = get_dummies(appellations)
+        self._vins = self._vins.drop(columns=[column])
+        self._vins = self._vins.join(appellation_dummies)
+        return self
