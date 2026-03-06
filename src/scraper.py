@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from collections import OrderedDict
-from io import SEEK_END, SEEK_SET, BufferedWriter
+from io import SEEK_END, SEEK_SET, BufferedWriter, TextIOWrapper
 from json import JSONDecodeError, loads
 from os import makedirs
 from os.path import dirname, exists, join, normpath, realpath
@@ -407,6 +407,44 @@ class Scraper:
                 except (JSONDecodeError, HTTPError) as e:
                     print(f"Erreur sur le produit {link}: {e}")
 
+    def _initstate(self, reset: bool) -> tuple[int, set[str]]:
+        """
+        appelle la fonction pour load le cache, si il existe
+        pas, il utilise les variables de base sinon il override
+        toute les variables pour continuer et pas recommencer le
+        processus en entier.
+
+        Args:
+            reset (bool): pouvoir le reset ou pas
+
+        Returns:
+            tuple[int, set[str]]: le contenu de la page et du cache
+        """
+        if not reset:
+            #
+            serializable: tuple[int, set[str]] | None = loadstate()
+            if isinstance(serializable, tuple):
+                return serializable
+        return 1, set()
+
+    def _ensuretitle(self, f: TextIOWrapper, title: str) -> None:
+        """
+        check si le titre est bien présent au début du buffer
+        sinon il l'ecrit, petit bug potentiel, a+ ecrit tout le
+        temps a la fin du buffer, si on a ecrit des choses avant
+        le titre sera apres ces données mais on part du principe
+        que personne va toucher le fichier.
+
+        Args:
+            f (TextIOWrapper): buffer stream fichier
+            title (str): titre du csv
+        """
+        _ = f.seek(0, SEEK_SET)
+        if not (f.read(len(title)) == title):
+            _ = f.write(title)
+        else:
+            _ = f.seek(0, SEEK_END)
+
     def getvins(self, subdir: str, filename: str, reset: bool = False) -> None:
         """
         Scrape  toutes les pages d'une catégorie et sauvegarde en CSV.
@@ -420,35 +458,13 @@ class Scraper:
         mode: Literal["w", "a+"] = "w" if reset else "a+"
         # titre
         title: str = "Appellation,Robert,Robinson,Suckling,Prix\n"
-        # page du début
-        page: int = 1
-        # le set qui sert de cache
-        cache: set[str] = set[str]()
+        # page: page où commence le scraper
+        # cache: tout les pages déjà parcourir
+        page, cache = self._initstate(reset)
 
-        custom_format = "{l_bar} {bar:20} {r_bar}"
-
-        if not reset:
-            # appelle la fonction pour load le cache, si il existe
-            # pas, il utilise les variables de base sinon il override
-            # toute les variables pour continuer et pas recommencer le
-            # processus en entier.
-            serializable: tuple[int, set[str]] | None = loadstate()
-            if isinstance(serializable, tuple):
-                # override la page et le cache
-                page, cache = serializable
         try:
             with open(filename, mode) as f:
-                # check si le titre est bien présent au début du buffer
-                # sinon il l'ecrit, petit bug potentiel, a+ ecrit tout le
-                # temps a la fin du buffer, si on a ecrit des choses avant
-                # le titre sera apres ces données mais on part du principe
-                # que personne va toucher le fichier.
-                _ = f.seek(0, SEEK_SET)
-                if not (f.read(len(title)) == title):
-                    _ = f.write(title)
-                else:
-                    _ = f.seek(0, SEEK_END)
-
+                self._ensuretitle(f, title)
                 while True:
                     products_list: list[dict[str, Any]] | None = (
                         self._geturlproductslist(f"{subdir}?page={page}")
@@ -457,7 +473,7 @@ class Scraper:
                         break
 
                     pbar: tqdm[dict[str, Any]] = tqdm(
-                        products_list, bar_format=custom_format
+                        products_list, bar_format="{l_bar} {bar:20} {r_bar}"
                     )
                     for product in pbar:
                         keyword: str = cast(
@@ -469,7 +485,7 @@ class Scraper:
                         self._writevins(cache, product, f)
                     page += 1
                     # va créer un fichier au début et l'override
-                    # tout les 5 pages au cas où SIGHUP ou autre 
+                    # tout les 5 pages au cas où SIGHUP ou autre
                     if page % 5 == 0 and not reset:
                         savestate((page, cache))
         except (Exception, HTTPError, KeyboardInterrupt, JSONDecodeError):

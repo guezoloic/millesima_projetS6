@@ -1,5 +1,4 @@
 import pytest
-from pandas import DataFrame
 from unittest.mock import patch, mock_open
 from cleaning import Cleaning
 
@@ -49,7 +48,7 @@ def test_fill_missing_scores(cleaning_raw: Cleaning):
     filled = cleaning_raw.fill_missing_scores().getVins()
     for col in cleaning_raw.SCORE_COLS:
         assert filled[col].isna().sum() == 0
-        
+
     pauillac_robert = filled[filled["Appellation"] == "Pauillac"]["Robert"]
     assert (pauillac_robert == 95.0).all()
 

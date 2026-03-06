@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 
-from typing import cast, override
+from os import getcwd
+from os.path import normpath, join
+from typing import cast
 from pandas import DataFrame, read_csv, to_numeric, get_dummies
+from sys import argv
+
+
+def path_filename(filename: str) -> str:
+    return normpath(join(getcwd(), filename))
 
 
 class Cleaning:
@@ -18,7 +25,6 @@ class Cleaning:
     def getVins(self) -> DataFrame:
         return self._vins.copy(deep=True)
 
-    @override
     def __str__(self) -> str:
         """
         Affiche un résumé du DataFrame
@@ -34,7 +40,7 @@ class Cleaning:
             f"Statistiques numériques :\n{self._vins.describe().round(2)}\n\n"
         )
 
-    def drop_empty_appellation(self) -> Cleaning:
+    def drop_empty_appellation(self) -> "Cleaning":
         self._vins = self._vins.dropna(subset=["Appellation"])
         return self
 
@@ -61,7 +67,7 @@ class Cleaning:
     def _mean_suckling(self) -> DataFrame:
         return self._mean_score("Suckling")
 
-    def fill_missing_scores(self) -> Cleaning:
+    def fill_missing_scores(self) -> "Cleaning":
         """
         Remplacer les notes manquantes par la moyenne
         des vins de la même appellation.
@@ -69,14 +75,14 @@ class Cleaning:
         for element in self.SCORE_COLS:
             means = self._mean_score(element)
             self._vins = self._vins.merge(means, on="Appellation", how="left")
-            
+
             mean_col = f"mean_{element}"
             self._vins[element] = self._vins[element].fillna(self._vins[mean_col])
 
             self._vins = self._vins.drop(columns=["mean_" + element])
         return self
 
-    def encode_appellation(self, column: str = "Appellation") -> Cleaning:
+    def encode_appellation(self, column: str = "Appellation") -> "Cleaning":
         """
         Remplace la colonne 'Appellation' par des colonnes indicatrices
         """
@@ -85,3 +91,19 @@ class Cleaning:
         self._vins = self._vins.drop(columns=[column])
         self._vins = self._vins.join(appellation_dummies)
         return self
+
+
+def main() -> None:
+    if len(argv) != 2:
+        raise ValueError(f"Usage: {argv[0]} <filename.csv>")
+
+    filename = argv[1]
+    cleaning: Cleaning = Cleaning(filename)
+    _ = cleaning.drop_empty_appellation().fill_missing_scores().encode_appellation()
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        print(f"ERREUR: {e}")
