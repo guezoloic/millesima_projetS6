@@ -1,1 +1,3 @@
 # Millesima
+
+L’objectif de ce projet est d’étudier, en utilisant des méthodes d’apprentissage automatique, l’impact de différents critères (notes des critiques, appelation) sur le prix d’un vin. Pour ce faire, on s’appuiera sur le site Millesima (https://www.millesima.fr/), qui a l’avantage de ne pas posséder de protection contre les bots. Par respect pour l’hébergeur du site, on veillera à limiter au maximum le nombre de requêtes. En particulier, on s’assurera d’avoir un code fonctionnel avant de scraper l’intégralité du site, pour éviter les répétitions.
